@@ -3,10 +3,10 @@ from scipy.io import loadmat
 import numpy as np
 import cvxpy as cp
 ### Excercise a)####
-B = np.loadtxt('traffic.mat',delimiter=',')
-l = np.loadtxt('traveltime.mat', delimiter=',')
-cap = np.loadtxt('capacities.mat')
-flow = l = np.loadtxt('flow.mat', delimiter=',')
+B = np.loadtxt('Handin2/Handin2/traffic.mat',delimiter=',')
+l = np.loadtxt('Handin2/Handin2/traveltime.mat', delimiter=',')
+cap = np.loadtxt('Handin2/Handin2/capacities.mat')
+flow = l = np.loadtxt('Handin2/Handin2/flow.mat', delimiter=',')
 #print(B.shape) # 17,28
 #print(cap.shape[0]) # 28 rader
 print(B.shape[0])# 17 rader
