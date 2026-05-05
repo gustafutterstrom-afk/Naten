@@ -2,11 +2,12 @@ import networkx as nx
 from scipy.io import loadmat
 import numpy as np
 import cvxpy as cp
+import sympy as sp 
 ### Excercise a)####
 B = np.loadtxt('Handin2/Handin2/traffic.mat',delimiter=',')
 l = np.loadtxt('Handin2/Handin2/traveltime.mat', delimiter=',')
 cap = np.loadtxt('Handin2/Handin2/capacities.mat')
-flow = l = np.loadtxt('Handin2/Handin2/flow.mat', delimiter=',')
+flow = np.loadtxt('Handin2/Handin2/flow.mat', delimiter=',')
 #print(B.shape) # 17,28
 #print(cap.shape[0]) # 28 rader
 print(B.shape[0])# 17 rader
@@ -37,37 +38,93 @@ maxF, dict = nx.maximum_flow(G, 0,16)
 print(f'Maxflow - the sum of the first split:{maxF}')
 
 #### Execercise c)###
-v = np.matmul(B,flow)
-print(v) # external positivt innebär inflow (-1 i B matrisen är in)
+mu = np.matmul(B,flow)
+print(mu) # external positivt innebär inflow (-1 i B matrisen är in)
 
 #### Execercise d)###
 v = np.zeros(B.shape[0])
-v[0]=20000
-v[-1]=-20000
-print(v)
-
-
-f = cp.Variable(B.shape[1])
-
-
-# --- model ---
-x = cp.multiply(f, 1 / cap)
-lc= cp.multiply(l,cap)
-print(x)
-print(lc)
-inv_term = cp.inv_pos(1 - x)
-
-# FIXED objective (DCP valid)
-objective = cp.Minimize(
-    cp.sum(cp.multiply(lc,inv_term)-lc)
-)
+v[0] = mu[0]
+v[-1] = -mu[0]
+fe = cp.Variable(B.shape[1])
+# 2. Define Constraints
 constraints = [
-    B @ f == v,
-    f >= 0,
-    f <= 0.99 * cap
+    B @ fe == v,
+    fe >= 0,
+    fe <= cap
 ]
 
-prob = cp.Problem(objective, constraints)
+# SAFE convex expression
+cost = cp.sum(
+    cp.multiply(
+        l * cap,
+        cp.inv_pos(1 - cp.multiply(fe, 1 / cap)) - 1
+    )
+)
 
-print(prob.solve(solver="SCS"))
-print("f =", f.value)
+objective_soc = cp.Minimize(cost)
+problem_soc = cp.Problem(objective_soc, constraints)
+
+
+print(problem_soc.solve())
+print(fe.value)
+
+
+### e)
+fe2 = cp.Variable(B.shape[1])
+cost_war = cp.sum(cp.multiply(cp.multiply(-cap,l),cp.log(1-fe2/cap)))
+objective_war = cp.Minimize(cost_war)
+constraints = [
+    B @ fe2 == v,
+    fe2 >= 0,
+    fe2 <= cap
+]
+problem_war = cp.Problem(objective_war, constraints)
+print(problem_war.solve())
+print(fe2.value)
+fe_star=fe.value
+
+##f
+fe3 =cp.Variable(B.shape[1])
+cost_war_toll = cp.sum(cp.multiply(cp.multiply(-cap,l),cp.log(1-fe3/cap))+cp.multiply(fe3,cp.multiply(l,fe_star))/cp.multiply(cap,cp.square(1-fe_star/cap)) )
+objective_war_toll = cp.Minimize(cost_war_toll)
+constraints = [
+    B @ fe3 == v,
+    fe3 >= 0,
+    fe3 <= cap
+]
+problem_war_toll = cp.Problem(objective_war_toll, constraints)
+print(problem_war_toll.solve())
+print(fe3.value)
+              
+## g###
+fe4 =cp.Variable(B.shape[1])
+cost_system = cp.sum(
+    cp.multiply(
+        l * cap,
+        cp.inv_pos(1 - cp.multiply(fe4, 1 / cap)) - 1
+    )-cp.multiply(fe4,l)
+)
+
+objective_soc_2 = cp.Minimize(cost_system)
+constraints = [
+    B @ fe4 == v,
+    fe4 >= 0,
+    fe4 <= cap
+]
+problem_soc_2 = cp.Problem(objective_soc_2, constraints)
+print(problem_soc_2.solve())
+print("soscial optimum:")
+print(fe4.value)
+fe_star2=fe4.value
+
+fe5 =cp.Variable(B.shape[1])
+cost2_war_toll = cp.sum(cp.multiply(cp.multiply(-cap,l),cp.log(1-fe5/cap))+cp.multiply(fe5,cp.multiply(l,fe_star2))/cp.multiply(cap,cp.square(1-fe_star2/cap))-cp.multiply(fe5,l) )
+objective_war_toll2 = cp.Minimize(cost2_war_toll)
+constraints = [
+    B @ fe5 == v,
+    fe5 >= 0,
+    fe5 <= cap
+]
+problem_war_toll2 = cp.Problem(objective_war_toll2, constraints)
+print(problem_war_toll2.solve())
+print(fe5.value)
